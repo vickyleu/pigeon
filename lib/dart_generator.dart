@@ -224,8 +224,19 @@ final BinaryMessenger? _binaryMessenger;
         final String returnStatement = func.returnType.isVoid
             ? 'return;'
             : 'return ($accessor as $returnType?)$nullHandler$castCall;';
-        indent.format('''
-final Map<Object?, Object?>? replyMap =\n\t\tawait channel.send($sendArgument) as Map<Object?, Object?>?;
+        returnStatement.toString();
+        if (func.returnType.isVoid) {
+          indent.writeln(
+              ''' await ((channel.send($sendArgument))..catchError((error){
+\t\t\tthrow PlatformException(
+\t\t\t\tcode: (error['${Keys.errorCode}'] as String?)!,
+\t\t\t\tmessage: error['${Keys.errorMessage}'] as String?,
+\t\t\t\tdetails: error['${Keys.errorDetails}'],
+\t\t\t);
+     })) as Map<Object?, Object?>?;''');
+        } else {
+          indent.format('''
+            final Map<Object?, Object?>? replyMap =\n\t\tawait channel.send($sendArgument) as Map<Object?, Object?>?;
 if (replyMap == null) {
 \tthrow PlatformException(
 \t\tcode: 'channel-error',
@@ -237,22 +248,26 @@ if (replyMap == null) {
 \t\tcode: (error['${Keys.errorCode}'] as String?)!,
 \t\tmessage: error['${Keys.errorMessage}'] as String?,
 \t\tdetails: error['${Keys.errorDetails}'],
-\t);''');
-        // On iOS we can return nil from functions to accommodate error
-        // handling.  Returning a nil value and not returning an error is an
-        // exception.
-        if (!func.returnType.isNullable && !func.returnType.isVoid) {
-          indent.format('''
+\t);
+            ''');
+        }
+        if (!func.returnType.isVoid) {
+          // On iOS we can return nil from functions to accommodate error
+          // handling.  Returning a nil value and not returning an error is an
+          // exception.
+          if (!func.returnType.isNullable && !func.returnType.isVoid) {
+            indent.format('''
 } else if (replyMap['${Keys.result}'] == null) {
 \tthrow PlatformException(
 \t\tcode: 'null-error',
 \t\tmessage: 'Host platform returned null value for non-null return value.',
 \t);''');
-        }
-        indent.format('''
+          }
+          indent.format('''
 } else {
 \t$returnStatement
 }''');
+        }
       });
     }
   });
@@ -467,24 +482,22 @@ void generateDart(DartOptions opt, Root root, StringSink sink) {
           indent, anEnum.documentationComments, _docCommentSpec);
       indent.write('enum ${anEnum.name} ');
       indent.scoped('{', '}', () {
-        bool haveValues=false;
+        bool haveValues = false;
         int index = 0;
-        for (final MapEntry<String,String?> member in anEnum.members) {
+        for (final MapEntry<String, String?> member in anEnum.members) {
           //
-          indent.writeln('${member.key}${
-                  ()sync*{
-                if(member.value!=null && member.value!.isNotEmpty){
-                  haveValues=true;
-                  yield "(${member.value})";
-                }else{
-                  yield "";
-                }
-              }().first
-          }${index == anEnum.members.length - 1 ? ';' : ','}');
+          indent.writeln('${member.key}${() sync* {
+            if (member.value != null && member.value!.isNotEmpty) {
+              haveValues = true;
+              yield "(${member.value})";
+            } else {
+              yield "";
+            }
+          }().first}${index == anEnum.members.length - 1 ? ';' : ','}');
           // indent.writeln('$member,');
           index++;
         }
-        if(haveValues){
+        if (haveValues) {
           indent.writeln('const ${anEnum.name}(this.value);');
           indent.writeln('final num value;');
         }
