@@ -224,7 +224,7 @@ final BinaryMessenger? _binaryMessenger;
         final String returnStatement = func.returnType.isVoid
             ? 'return;'
             : 'return ($accessor as $returnType?)$nullHandler$castCall;';
-        returnStatement.toString();
+
         if (func.returnType.isVoid) {
           indent.writeln(
               ''' await ((channel.send($sendArgument))..catchError((error){
@@ -234,7 +234,8 @@ final BinaryMessenger? _binaryMessenger;
 \t\t\t\tdetails: error['${Keys.errorDetails}'],
 \t\t\t);
      })) as Map<Object?, Object?>?;''');
-        } else {
+        }
+        else {
           indent.format('''
             final Map<Object?, Object?>? replyMap =\n\t\tawait channel.send($sendArgument) as Map<Object?, Object?>?;
 if (replyMap == null) {
